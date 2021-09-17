@@ -1507,9 +1507,9 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "0.14.12"
+version = "0.14.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13f67199e765030fa08fe0bd581af683f0d5bc04ea09c2b1102012c5fb90e7fd"
+checksum = "15d1cfb9e4f68655fa04c01f59edb405b6074a0f7118ea881e5026e4a1cd8593"
 dependencies = [
  "bytes 1.0.1",
  "futures-channel",
@@ -1536,7 +1536,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f9f7a97316d44c0af9b0301e65010573a853a9fc97046d7331d7f6bc0fd5a64"
 dependencies = [
  "futures-util",
- "hyper 0.14.12",
+ "hyper 0.14.13",
  "log 0.4.14",
  "rustls 0.19.0",
  "tokio",
@@ -3211,7 +3211,7 @@ dependencies = [
  "futures-util",
  "http",
  "http-body",
- "hyper 0.14.12",
+ "hyper 0.14.13",
  "hyper-rustls",
  "ipnet",
  "js-sys",
@@ -3906,7 +3906,7 @@ dependencies = [
  "ed25519-dalek",
  "futures",
  "get-port",
- "hyper 0.14.12",
+ "hyper 0.14.13",
  "itertools 0.10.1",
  "libp2p",
  "miniscript",
