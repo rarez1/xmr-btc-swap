@@ -17,6 +17,7 @@ use comfy_table::Table;
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use std::cmp::min;
+use std::convert::TryInto;
 use std::env;
 use std::future::Future;
 use std::path::PathBuf;
@@ -25,13 +26,13 @@ use std::time::Duration;
 use swap::bitcoin::TxLock;
 use swap::cli::command::{parse_args_and_apply_defaults, Arguments, Command, ParseResult};
 use swap::cli::{list_sellers, EventLoop, SellerStatus};
-use swap::database::Database;
+use swap::database::open_db;
 use swap::env::Config;
 use swap::libp2p_ext::MultiAddrExt;
 use swap::network::quote::BidQuote;
 use swap::network::swarm;
 use swap::protocol::bob;
-use swap::protocol::bob::Swap;
+use swap::protocol::bob::{BobState, Swap};
 use swap::seed::Seed;
 use swap::{bitcoin, cli, monero};
 use url::Url;
@@ -44,6 +45,7 @@ async fn main() -> Result<()> {
         data_dir,
         debug,
         json,
+        sled,
         cmd,
     } = match parse_args_and_apply_defaults(env::args_os())? {
         ParseResult::Arguments(args) => args,
@@ -52,6 +54,8 @@ async fn main() -> Result<()> {
             std::process::exit(0);
         }
     };
+
+    let db = open_db(data_dir.join("database"), data_dir.join("sqlite"), sled).await?;
 
     match cmd {
         Command::BuyXmr {
@@ -66,8 +70,6 @@ async fn main() -> Result<()> {
             let swap_id = Uuid::new_v4();
 
             cli::tracing::init(debug, json, data_dir.join("logs"), Some(swap_id))?;
-            let db = Database::open(data_dir.join("database").as_path())
-                .context("Failed to open database")?;
             let seed = Seed::from_file_or_generate(data_dir.as_path())
                 .context("Failed to read in seed file")?;
 
@@ -139,20 +141,22 @@ async fn main() -> Result<()> {
             }
         }
         Command::History => {
-            let db = Database::open(data_dir.join("database").as_path())
-                .context("Failed to open database")?;
-
             let mut table = Table::new();
 
             table.set_header(vec!["SWAP ID", "STATE"]);
 
-            for (swap_id, state) in db.all_bob()? {
+            for (swap_id, state) in db.all().await? {
+                let state: BobState = state.try_into()?;
                 table.add_row(vec![swap_id.to_string(), state.to_string()]);
             }
 
             println!("{}", table);
         }
-
+        Command::Config => {
+            println!("Data Directory: {}", data_dir.display());
+            let config_json = serde_json::to_string_pretty(&env_config)?;
+            println!("{}", config_json);
+        }
         Command::WithdrawBtc {
             bitcoin_electrum_rpc_url,
             bitcoin_target_block,
@@ -215,8 +219,6 @@ async fn main() -> Result<()> {
             tor_socks5_port,
         } => {
             cli::tracing::init(debug, json, data_dir.join("logs"), Some(swap_id))?;
-            let db = Database::open(data_dir.join("database").as_path())
-                .context("Failed to open database")?;
             let seed = Seed::from_file_or_generate(data_dir.as_path())
                 .context("Failed to read in seed file")?;
 
@@ -232,8 +234,8 @@ async fn main() -> Result<()> {
                 init_monero_wallet(data_dir, monero_daemon_address, env_config).await?;
             let bitcoin_wallet = Arc::new(bitcoin_wallet);
 
-            let seller_peer_id = db.get_peer_id(swap_id)?;
-            let seller_addresses = db.get_addresses(seller_peer_id)?;
+            let seller_peer_id = db.get_peer_id(swap_id).await?;
+            let seller_addresses = db.get_addresses(seller_peer_id).await?;
 
             let behaviour = cli::Behaviour::new(seller_peer_id, env_config, bitcoin_wallet.clone());
             let mut swarm =
@@ -251,7 +253,7 @@ async fn main() -> Result<()> {
                 EventLoop::new(swap_id, swarm, seller_peer_id, env_config)?;
             let handle = tokio::spawn(event_loop.run());
 
-            let monero_receive_address = db.get_monero_address(swap_id)?;
+            let monero_receive_address = db.get_monero_address(swap_id).await?;
             let swap = Swap::from_db(
                 db,
                 swap_id,
@@ -260,7 +262,8 @@ async fn main() -> Result<()> {
                 env_config,
                 event_loop_handle,
                 monero_receive_address,
-            )?;
+            )
+            .await?;
 
             tokio::select! {
                 event_loop_result = handle => {
@@ -277,8 +280,6 @@ async fn main() -> Result<()> {
             bitcoin_target_block,
         } => {
             cli::tracing::init(debug, json, data_dir.join("logs"), Some(swap_id))?;
-            let db = Database::open(data_dir.join("database").as_path())
-                .context("Failed to open database")?;
             let seed = Seed::from_file_or_generate(data_dir.as_path())
                 .context("Failed to read in seed file")?;
 
@@ -300,8 +301,6 @@ async fn main() -> Result<()> {
             bitcoin_target_block,
         } => {
             cli::tracing::init(debug, json, data_dir.join("logs"), Some(swap_id))?;
-            let db = Database::open(data_dir.join("database").as_path())
-                .context("Failed to open database")?;
             let seed = Seed::from_file_or_generate(data_dir.as_path())
                 .context("Failed to read in seed file")?;
 
