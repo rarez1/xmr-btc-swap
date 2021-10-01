@@ -60,6 +60,14 @@ where
             env_config: env_config(testnet),
             cmd: Command::Balance,
         },
+        RawCommand::ExportBitcoinWallet => Arguments {
+            testnet,
+            json,
+            disable_timestamp,
+            config_path: config_path(config, testnet)?,
+            env_config: env_config(testnet),
+            cmd: Command::ExportBitcoinWallet,
+        },
         RawCommand::ManualRecovery(ManualRecovery::Redeem {
             redeem_params: RecoverCommandParams { swap_id },
             do_not_await_finality,
@@ -201,6 +209,7 @@ pub enum Command {
     SafelyAbort {
         swap_id: Uuid,
     },
+    ExportBitcoinWallet,
 }
 
 #[derive(structopt::StructOpt, Debug)]
@@ -266,6 +275,8 @@ pub enum RawCommand {
         about = "Prints the Bitcoin and Monero balance. Requires the monero-wallet-rpc to be running."
     )]
     Balance,
+    #[structopt(about = "Print the internal bitcoin wallet descriptor.")]
+    ExportBitcoinWallet,
     #[structopt(about = "Contains sub-commands for recovering a swap manually.")]
     ManualRecovery(ManualRecovery),
 }

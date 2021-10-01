@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a `disable-timestamp` flag to the ASB that disables timestamps from logs.
+- Added `export-bitcoin-wallet` subcommand to the CLI and ASB, to print the internal bitcoin wallet descriptor.
+  This will allow users to transact and monitor using external wallets.
 
 ## [0.8.3] - 2021-09-03
 
